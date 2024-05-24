@@ -38,13 +38,19 @@ public class KdTree {
 
     private static class Xcomparison implements Comparator<Point2D> {
         public int compare(Point2D o1, Point2D o2) {
-            return (int) (o1.x() - o2.x());
+            if ((o1.x() - o2.x()) < 0) {
+                return -1;
+            }
+            return 1;
         }
     }
 
     private static class Ycomparison implements Comparator<Point2D> {
         public int compare(Point2D o1, Point2D o2) {
-            return (int) (o1.y() - o2.y());
+            if ((o1.y() - o2.y()) < 0) {
+                return -1;
+            }
+            return 1;
         }
     }
 
@@ -70,8 +76,11 @@ public class KdTree {
     }
 
     public void insert(Point2D p) {
+        if (p == null) {
+            throw new IllegalArgumentException();
+        }
         root = insert(p, root);
-    }// add the point to the set (if it is not already in the set)
+    } // add the point to the set (if it is not already in the set)
 
     private Node insert(Point2D p, Node n) {
         if (root == null) {
@@ -82,11 +91,15 @@ public class KdTree {
         if (n == null) {
             return new Node(p, USE_X);
         }
-        if (USE_X) {
+        if (n.point.equals(p)) {
+            return n;
+        }
+        if (n.flag == USE_X) {
             int cmp = BY_X.compare(p, n.point);
             if (cmp < 0) {
                 n.left = insert(p, n.left);
                 if (n.left.value == null) {
+                    // System.out.println("xleft " + n.point);
                     n.left.value = new RectHV(n.value.xmin(), n.value.ymin(), n.point.x(),
                                               n.value.ymax());
                     n.left.flag = USE_Y;
@@ -96,6 +109,7 @@ public class KdTree {
             else {
                 n.right = insert(p, n.right);
                 if (n.right.value == null) {
+                    // System.out.println("yleft " + n.point);
                     n.right.value = new RectHV(n.point.x(), n.value.ymin(), n.value.xmax(),
                                                n.value.ymax());
                     n.right.flag = USE_Y;
@@ -108,6 +122,7 @@ public class KdTree {
             if (cmp < 0) {
                 n.left = insert(p, n.left);
                 if (n.left.value == null) {
+                    // System.out.println("left " + n.point);
                     n.left.value = new RectHV(n.value.xmin(), n.value.ymin(), n.value.xmax(),
                                               n.point.y());
                 }
@@ -115,6 +130,7 @@ public class KdTree {
             else {
                 n.right = insert(p, n.right);
                 if (n.right.value == null) {
+                    // System.out.println("right " + n.point);
                     n.right.value = new RectHV(n.value.xmin(), n.point.y(), n.value.xmax(),
                                                n.value.ymax());
                 }
@@ -125,6 +141,9 @@ public class KdTree {
     }
 
     public boolean contains(Point2D p) {
+        if (p == null) {
+            throw new IllegalArgumentException();
+        }
         Node tem = root;
         boolean flag = false;
         while (tem != null) {
@@ -155,7 +174,7 @@ public class KdTree {
     }            // does the set contain point p?
 
     public void draw() {
-
+        draw(root);
     }                       // draw all points to standard draw
 
     private void draw(Node tem) {
@@ -170,11 +189,17 @@ public class KdTree {
             StdDraw.setPenColor(Color.BLUE);
             StdDraw.line(tem.value.xmin(), tem.point.y(), tem.value.xmax(), tem.point.y());
         }
+        StdDraw.setPenColor(Color.BLACK);
+        StdDraw.setPenRadius(0.02);
+        StdDraw.point(tem.point.x(), tem.point.y());
         draw(tem.left);
         draw(tem.right);
     }
 
     public Iterable<Point2D> range(RectHV rect) {
+        if (rect == null) {
+            throw new IllegalArgumentException();
+        }
         Stack<Point2D> container = new Stack<Point2D>();
         return range(rect, container, root);
     }         // all points that are inside the rectangle (or on the boundary)
@@ -189,10 +214,10 @@ public class KdTree {
             container = range(rect, container, n.right);
         }
         else {
-            if (n.left.value.intersects(rect)) {
+            if (n.left != null && n.left.value.intersects(rect)) {
                 container = range(rect, container, n.left);
             }
-            if (n.right.value.intersects(rect)) {
+            if (n.right != null && n.right.value.intersects(rect)) {
                 container = range(rect, container, n.right);
             }
         }
@@ -200,6 +225,12 @@ public class KdTree {
     }
 
     public Point2D nearest(Point2D p) {
+        if (p == null) {
+            throw new IllegalArgumentException();
+        }
+        if (isEmpty()) {
+            return null;
+        }
         return nearest(p, root, root.point);
     }             // a nearest neighbor in the set to point p; null if the set is empty
 
@@ -218,14 +249,21 @@ public class KdTree {
             cmp = BY_Y.compare(query, n.point);
         }
         if (cmp < 0) {
-            if (n.left.value.distanceTo(query) < query.distanceTo(best)) {
+            if (n.left != null && n.left.value.distanceTo(query) < query.distanceTo(best)) {
                 best = nearest(query, n.left, best);
+            }
+            if (n.right != null && n.right.value.distanceTo(query) < query.distanceTo(best)) {
+                best = nearest(query, n.right, best);
             }
         }
         else {
-            if (n.right.value.distanceTo(query) < query.distanceTo(best)) {
+            if (n.right != null && n.right.value.distanceTo(query) < query.distanceTo(best)) {
                 best = nearest(query, n.right, best);
             }
+            if (n.left != null && n.left.value.distanceTo(query) < query.distanceTo(best)) {
+                best = nearest(query, n.left, best);
+            }
+
         }
         return best;
     }
@@ -237,6 +275,11 @@ public class KdTree {
         test.insert(new Point2D(0.2, 0.3));
         test.insert(new Point2D(0.4, 0.7));
         test.insert(new Point2D(0.9, 0.6));
-        test.draw();
+        // test.draw();
+        // System.out.println(test.root.point);
+        // System.out.println(test.root.right.point);
+        // System.out.println(test.root.left.point);
+        // System.out.println(test.root.left.left.point);
+        // System.out.println(test.root.right.point);
     }                  // unit testing of the methods (optional)
 }

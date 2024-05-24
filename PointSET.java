@@ -59,20 +59,19 @@ public class PointSET {
             }
         }
         return stack;
-    }             // all points that are inside the rectangle (or on the boundary)
+    }             // all points that
+    // are inside the rectangle (or on the boundary)
 
     public Point2D nearest(Point2D p) {
-        if (isEmpty()) {
-            return null;
+        if (p == null) {
+            throw new IllegalArgumentException();
         }
         double min = Double.POSITIVE_INFINITY;
         Point2D nearestNeighbor = null;
         for (Point2D point : pointSet) {
-            if (!p.equals(point)) {
-                if (p.distanceTo(point) < min) {
-                    min = p.distanceTo(point);
-                    nearestNeighbor = point;
-                }
+            if (p.distanceTo(point) < min) {
+                min = p.distanceTo(point);
+                nearestNeighbor = point;
             }
         }
         return nearestNeighbor;
